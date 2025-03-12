@@ -8,17 +8,6 @@
 const char* ssid = "moto_edge_50_pro_JD";  // Enter your Wi-Fi name
 const char* password = "Canada031106";     // Enter Wi-Fi password
 
-// ThingSpeak Acc/Gyro information
-char thingSpeakAddress[] = "api.thingspeak.com";
-unsigned long channelID = 2836731;
-const char* readAPIKey = "1BG9R3W0JQ7SJUH5";
-const char* writeAPIKey = "04T3CK2LUBAAMZMP";
-
-// ThingSpeak GPS information
-unsigned long channelID2 = 2836769;
-const char* readAPIKey2 = "PX2SNOCAXFAW9LVW";
-const char* writeAPIKey2 = "6WXACB51HFEZWCRC";
-
 /*
 // MQTT information
 const char* server = "98.70.48.142";
@@ -375,29 +364,6 @@ void gyroData(bool status, int choice) {
   }
 }
 
-void sendTS() {
-  ThingSpeak.setField(1, lat);
-  ThingSpeak.setField(2, lon);
-  ThingSpeak.setField(3, speed);
-  ThingSpeak.setField(4, alt);
-  int y = ThingSpeak.writeFields(channelID2, writeAPIKey2);
-  ThingSpeak.setField(1, accX);
-  ThingSpeak.setField(2, accY);
-  ThingSpeak.setField(3, accZ);
-  ThingSpeak.setField(4, gyroX);
-  ThingSpeak.setField(5, gyroY);
-  ThingSpeak.setField(6, gyroZ);
-  int x = ThingSpeak.writeFields(channelID, writeAPIKey);
-  if (x == 200){
-      Serial.println("Channel update successful.");
-      digitalWrite(Led_DATA, HIGH);
-    }
-  else {
-    Serial.println("Problem updating channel. HTTP error code " + String(x));
-    digitalWrite(Led_DATA, LOW);
-  }
-}
-
 void sendData() {
   sprintf(ax, "Acc X: %f", accX);
   sprintf(ay, "Acc Y: %f", accY);
@@ -437,9 +403,8 @@ void setup() {
   Wire.begin(SDA_PIN, SCL_PIN);
 
   wifiInit();
-  // mqttClient.setServer(server, port);
-  ThingSpeak.begin(esp32Client);
-
+  mqttClient.setServer(server, port);
+  
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, RXD2, TXD2);
 
   // Using the I2C communication at fast mode (400kHz)
@@ -466,7 +431,6 @@ void loop() {
   gpsInfo();
   accData(false, ACC_CONFIG_MODE);
   gyroData(false, GYRO_CONFIG_MODE);
-  //sendData();
-  sendTS();
+  sendData();
   delay(500);
 }
