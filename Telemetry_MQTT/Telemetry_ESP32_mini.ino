@@ -8,18 +8,15 @@
 const char* ssid = "moto_edge_50_pro_JD";  // Enter your Wi-Fi name
 const char* password = "Canada031106";     // Enter Wi-Fi password
 
-/*
 // MQTT information
 const char* server = "98.70.48.142";
 int port = 1883;
 const char* mqttUser = "ElectronicSensor";
 const char* mqttPassword = "@Salmon 5G";
-*/
 
 WiFiClient esp32Client;
-// PubSubClient mqttClient(esp32Client);
+PubSubClient mqttClient(esp32Client);
 
-/*
 char ax[40];
 char ay[40];
 char az[40];
@@ -31,7 +28,9 @@ char LON[40];
 char SPEED[40];
 char ALT[40];
 char SAT[40];
-*/
+char curr[40];
+char volt[40];
+char pow[40];
 
 // Define the RX and TX pins for GPS
 #define RXD2 20
@@ -80,6 +79,18 @@ float lat, lon, speed, alt, sat;
 int Led_WIFI = 0;
 int Led_DATA = 1;
 
+int sensorC_PIN = 2;
+int sensorV_PIN = 3;
+float sensibility = 0.066; //sensibility in V/A
+float current, voltage, irms, power, sensorCRead, sensorVRead;
+
+hw_timer_t *timer = NULL;
+
+void IRAM_ATTR timerInterrupcion() {
+  get_CV_data();
+  print_CV_data();
+}
+
 void wifiInit() {
   Serial.print("Conectándose a ");
   Serial.println(ssid);
@@ -103,6 +114,7 @@ void reconnect() {
       Serial.println("Connected");
       mqttClient.subscribe("Lecturas/01");
       mqttClient.subscribe("Lecturas/02");
+      mqttClient.subscribe("Lecturas/03")
     } else {
       Serial.print("Failed with state , rc=");
       Serial.print(mqttClient.state());
@@ -364,6 +376,34 @@ void gyroData(bool status, int choice) {
   }
 }
 
+void setup_timer(){
+  timer = timerBegin(1000000);
+  timerAttachInterrupt(timer, &timerInterrupcion); // Interruption function
+  timerAlarm(timer, 500000, true, 0); // Interruption every 1/2 second
+}
+
+float fmap(float x, float in_min, float in_max, float out_min, float out_max){
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void get_CV_data(){
+  sensorCRead = analogRead(sensorC_PIN) * (5.0 / 1023.0);
+  current = (sensorCRead-2.5)/sensibility;
+  //irms = current*0.707;
+  sensorVRead = analogRead(sensorV_PIN);
+  voltage = fmap(sensorVRead, 0, 1023, 0.0, 10.0);
+  power = current*voltage; // P=IV watts
+}
+
+void print_CV_data(){
+  Serial.print("Current (A): ");
+  Serial.println(current, 4);
+  Serial.print("Irms (A): ");
+  Serial.println(irms, 4);
+  Serial.print("Power (W): ");
+  Serial.println(power, 4);
+}
+
 void sendData() {
   sprintf(ax, "Acc X: %f", accX);
   sprintf(ay, "Acc Y: %f", accY);
@@ -376,6 +416,9 @@ void sendData() {
   sprintf(SPEED, "Speed(km/h): %f", speed);
   sprintf(ALT, "Altitude(m): %f", alt);
   sprintf(SAT, "Satellites: %f", sat);
+  sprintf(curr, "Current: %f", current);
+  sprintf(volt, "Voltage: %f", irms);
+  sprintf(pow, "Power: %f", power);
 
   if (!mqttClient.connected()) {
     reconnect();
@@ -393,10 +436,14 @@ void sendData() {
   mqttClient.publish("Lecturas/02", SPEED);
   mqttClient.publish("Lecturas/02", ALT);
   mqttClient.publish("Lecturas/02", SAT);
+  mqttClient.publish("Lecturas/03", curr);
+  mqttClient.publish("Lecturas/03", volt);
+  mqttClient.publish("Lecturas/03", pow);
 }
 
 void setup() {
   Serial.begin(115200);
+  setup_timer();
   pinMode(Led_WIFI, OUTPUT);
   pinMode(Led_DATA, OUTPUT);
 
