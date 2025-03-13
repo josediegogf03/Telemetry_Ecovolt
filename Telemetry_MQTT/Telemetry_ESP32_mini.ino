@@ -30,7 +30,7 @@ char ALT[40];
 char SAT[40];
 char curr[40];
 char volt[40];
-char pow[40];
+char POW[40];
 
 // Define the RX and TX pins for GPS
 #define RXD2 20
@@ -114,7 +114,7 @@ void reconnect() {
       Serial.println("Connected");
       mqttClient.subscribe("Lecturas/01");
       mqttClient.subscribe("Lecturas/02");
-      mqttClient.subscribe("Lecturas/03")
+      mqttClient.subscribe("Lecturas/03");
     } else {
       Serial.print("Failed with state , rc=");
       Serial.print(mqttClient.state());
@@ -418,7 +418,7 @@ void sendData() {
   sprintf(SAT, "Satellites: %f", sat);
   sprintf(curr, "Current: %f", current);
   sprintf(volt, "Voltage: %f", irms);
-  sprintf(pow, "Power: %f", power);
+  sprintf(POW, "Power: %f", power);
 
   if (!mqttClient.connected()) {
     reconnect();
@@ -438,7 +438,7 @@ void sendData() {
   mqttClient.publish("Lecturas/02", SAT);
   mqttClient.publish("Lecturas/03", curr);
   mqttClient.publish("Lecturas/03", volt);
-  mqttClient.publish("Lecturas/03", pow);
+  mqttClient.publish("Lecturas/03", POW);
 }
 
 void setup() {
