@@ -68,6 +68,18 @@ float lat, lon, speed, alt, sat;
 int Led_WIFI = 0;
 int Led_DATA = 1;
 
+int sensorC_PIN = 2;
+int sensorV_PIN = 3;
+float sensibility = 0.066; //sensibility in V/A
+float current, voltage, irms, power, sensorCRead, sensorVRead;
+
+hw_timer_t *timer = NULL;
+
+void IRAM_ATTR timerInterrupcion() {
+  get_CV_data();
+  print_CV_data();
+}
+
 void wifiInit() {
   Serial.print("Conectándose a ");
   Serial.println(ssid);
@@ -335,6 +347,34 @@ void gyroData(bool status, int choice) {
   }
 }
 
+void setup_timer(){
+  timer = timerBegin(1000000);
+  timerAttachInterrupt(timer, &timerInterrupcion); // Interruption function
+  timerAlarm(timer, 500000, true, 0); // Interruption every 1/2 second
+}
+
+float fmap(float x, float in_min, float in_max, float out_min, float out_max){
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void get_CV_data(){
+  sensorCRead = analogRead(sensorC_PIN) * (5.0 / 1023.0);
+  current = (sensorCRead-2.5)/sensibility;
+  //irms = current*0.707;
+  sensorVRead = analogRead(sensorV_PIN);
+  voltage = fmap(sensorVRead, 0, 1023, 0.0, 10.0);
+  power = current*voltage; // P=IV watts
+}
+
+void print_CV_data(){
+  Serial.print("Current (A): ");
+  Serial.println(current, 4);
+  Serial.print("Irms (A): ");
+  Serial.println(irms, 4);
+  Serial.print("Power (W): ");
+  Serial.println(power, 4);
+}
+
 void sendTS() {
   ThingSpeak.setField(1, lat);
   ThingSpeak.setField(2, lon);
@@ -360,6 +400,7 @@ void sendTS() {
 
 void setup() {
   Serial.begin(115200);
+  setup_timer();
   pinMode(Led_WIFI, OUTPUT);
   pinMode(Led_DATA, OUTPUT);
 
